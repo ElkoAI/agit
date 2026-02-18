@@ -30,6 +30,8 @@ agit task done 1 --print --max-output 2000
 agit checkpoint "before refactor"
 agit checkpoint list
 agit restore --force
+agit restore --dry-run
+agit restore --keep
 agit workspace set-state --json '{"focus":"refactor","notes":"..." }'
 agit workspace clear-state
 agit hook install

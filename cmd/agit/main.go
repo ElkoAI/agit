@@ -464,6 +464,8 @@ func runCheckpointList(args []string) error {
 func runRestore(args []string) error {
 	fs := flag.NewFlagSet("agit restore", flag.ContinueOnError)
 	force := fs.Bool("force", false, "restore even if working tree is dirty")
+	dryRun := fs.Bool("dry-run", false, "show target commit without restoring")
+	keep := fs.Bool("keep", false, "use git reset --keep to preserve local changes")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -474,9 +476,14 @@ func runRestore(args []string) error {
 	}
 	defer ctx.Close()
 
-	commit, err := app.Restore(ctx, *force)
+	commit, err := app.Restore(ctx, *force, *dryRun, *keep)
 	if err != nil {
 		return err
+	}
+
+	if *dryRun {
+		fmt.Println("would restore to", commit)
+		return nil
 	}
 
 	fmt.Println("restored to", commit)

@@ -43,7 +43,11 @@ func Checkpoint(ctx *Context, message string) (string, error) {
 }
 
 // Restore resets the repo to the latest checkpoint commit.
-func Restore(ctx *Context, force bool) (string, error) {
+// Options:
+// - force: allow restore when dirty
+// - dryRun: do not modify repo, just return target commit
+// - keep: use `git reset --keep` to preserve local changes
+func Restore(ctx *Context, force, dryRun, keep bool) (string, error) {
 	if !force {
 		dirty, err := gitIsDirty()
 		if err != nil {
@@ -59,8 +63,18 @@ func Restore(ctx *Context, force bool) (string, error) {
 		return "", err
 	}
 
-	if err := gitResetHard(cp.CommitHash); err != nil {
-		return "", err
+	if dryRun {
+		return cp.CommitHash, nil
+	}
+
+	if keep {
+		if err := gitResetKeep(cp.CommitHash); err != nil {
+			return "", err
+		}
+	} else {
+		if err := gitResetHard(cp.CommitHash); err != nil {
+			return "", err
+		}
 	}
 
 	if err := dbSetWorkspaceLastCommit(ctx, cp.CommitHash); err != nil {

@@ -130,6 +130,12 @@ func restoreTool() mcp.Tool {
 		mcp.WithBoolean("force",
 			mcp.Description("Restore even if working tree is dirty"),
 		),
+		mcp.WithBoolean("dry_run",
+			mcp.Description("Return target commit without restoring"),
+		),
+		mcp.WithBoolean("keep",
+			mcp.Description("Use git reset --keep to preserve local changes"),
+		),
 	)
 }
 
@@ -402,6 +408,8 @@ func checkpointHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 func restoreHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args := request.GetArguments()
 	force, _ := args["force"].(bool)
+	dryRun, _ := args["dry_run"].(bool)
+	keep, _ := args["keep"].(bool)
 
 	appCtx, err := app.LoadContext()
 	if err != nil {
@@ -409,12 +417,16 @@ func restoreHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 	defer appCtx.Close()
 
-	commit, err := app.Restore(appCtx, force)
+	commit, err := app.Restore(appCtx, force, dryRun, keep)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	return jsonResult(map[string]any{"commit": commit})
+	return jsonResult(map[string]any{
+		"commit":  commit,
+		"dry_run": dryRun,
+		"keep":    keep,
+	})
 }
 
 func workspaceUpdateHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

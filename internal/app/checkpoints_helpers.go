@@ -50,6 +50,14 @@ func gitResetHard(commit string) error {
 	return nil
 }
 
+func gitResetKeep(commit string) error {
+	cmd := exec.Command("git", "reset", "--keep", commit)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git reset --keep %s: %v: %s", commit, err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 func gitIsDirty() (bool, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	out, err := cmd.Output()
