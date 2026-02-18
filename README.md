@@ -42,6 +42,8 @@ agit trace 1 --json
 ## Repository Layout
 
 ```
+docs/
+  mcp.md      # MCP tool reference
 cmd/
   agit/        # CLI
   agit-mcp/    # MCP server (stub)
