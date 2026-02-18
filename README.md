@@ -28,6 +28,8 @@ agit task list
 agit task start 1
 agit task done 1 --print --max-output 2000
 agit checkpoint "before refactor"
+agit checkpoint prune --keep-last 20 --dry-run
+agit checkpoint prune --from-manifest
 agit checkpoint list
 agit restore --force
 agit restore --dry-run
@@ -51,6 +53,24 @@ cmd/
 internal/
   app/         # app logic + git helpers
   db/          # DB schema + init
+
+## Pruning Checkpoints
+
+Pruning is optional and configurable. By default, no pruning is done.
+
+- CLI:
+  - `agit checkpoint prune --keep-last 20 --dry-run`
+  - `agit checkpoint prune --from-manifest`
+
+- Manifest:
+```json
+{
+  "checkpoints": {
+    "keep_last": 20,
+    "keep_days": 30
+  }
+}
+```
 ```
 
 ## Roadmap (Short)

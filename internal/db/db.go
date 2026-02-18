@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -315,13 +316,17 @@ func GetLatestCheckpoint(db *sql.DB, workspaceID string) (Checkpoint, error) {
 
 func ListCheckpoints(db *sql.DB, workspaceID string, limit int) ([]Checkpoint, error) {
 	if limit <= 0 {
-		limit = 20
+		limit = 0
 	}
-	rows, err := db.Query(
-		`SELECT id, workspace_id, commit_hash, agent_state, message, created_at
-         FROM checkpoints WHERE workspace_id = ? ORDER BY id DESC LIMIT ?`,
-		workspaceID, limit,
-	)
+	query := `SELECT id, workspace_id, commit_hash, agent_state, message, created_at
+         FROM checkpoints WHERE workspace_id = ? ORDER BY id DESC`
+	var rows *sql.Rows
+	var err error
+	if limit > 0 {
+		rows, err = db.Query(query+` LIMIT ?`, workspaceID, limit)
+	} else {
+		rows, err = db.Query(query, workspaceID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("list checkpoints: %w", err)
 	}
@@ -339,6 +344,24 @@ func ListCheckpoints(db *sql.DB, workspaceID string, limit int) ([]Checkpoint, e
 		return nil, fmt.Errorf("list checkpoints: %w", err)
 	}
 	return cps, nil
+}
+
+func DeleteCheckpointsByID(db *sql.DB, workspaceID string, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	placeholders := make([]string, 0, len(ids))
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, workspaceID)
+	for _, id := range ids {
+		placeholders = append(placeholders, "?")
+		args = append(args, id)
+	}
+	query := `DELETE FROM checkpoints WHERE workspace_id = ? AND id IN (` + strings.Join(placeholders, ",") + `)`
+	if _, err := db.Exec(query, args...); err != nil {
+		return fmt.Errorf("delete checkpoints: %w", err)
+	}
+	return nil
 }
 
 func UpdateWorkspaceLastCommit(db *sql.DB, workspaceID, commit string) error {

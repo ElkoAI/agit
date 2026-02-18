@@ -359,6 +359,10 @@ json
   "version": "1.0.0",
   "name": "agit",
   "description": "Agent Git MCP Server",
+  "checkpoints": {
+    "keep_last": 20,
+    "keep_days": 30
+  },
   "tasks": [
     {
       "id": 1,

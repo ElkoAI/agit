@@ -407,10 +407,13 @@ func runTaskDone(args []string) error {
 
 func runCheckpoint(args []string) error {
 	if len(args) < 1 {
-		return fmt.Errorf("checkpoint subcommand required (list or message)")
+		return fmt.Errorf("checkpoint subcommand required (list, prune, or message)")
 	}
 	if args[0] == "list" {
 		return runCheckpointList(args[1:])
+	}
+	if args[0] == "prune" {
+		return runCheckpointPrune(args[1:])
 	}
 
 	msg := strings.Join(args, " ")
@@ -462,6 +465,46 @@ func runCheckpointList(args []string) error {
 		}
 		fmt.Printf("%d  %s  %s  %s\n", cp.ID, cp.CommitHash, cp.CreatedAt.Format("2006-01-02 15:04:05"), msg)
 	}
+	return nil
+}
+
+func runCheckpointPrune(args []string) error {
+	fs := flag.NewFlagSet("agit checkpoint prune", flag.ContinueOnError)
+	keepLast := fs.Int("keep-last", 0, "keep last N checkpoints")
+	keepDays := fs.Int("keep-days", 0, "keep checkpoints from last N days")
+	dryRun := fs.Bool("dry-run", false, "show what would be deleted")
+	fromManifest := fs.Bool("from-manifest", false, "load prune policy from .agit-manifest.json")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	ctx, err := app.LoadContext()
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
+
+	if *fromManifest {
+		path := app.DefaultManifestPath(ctx.Workspace.WorktreePath)
+		manifest, err := app.LoadManifest(path)
+		if err != nil {
+			return err
+		}
+		*keepLast = manifest.Checkpoints.KeepLast
+		*keepDays = manifest.Checkpoints.KeepDays
+	}
+
+	res, err := app.PruneCheckpoints(ctx, *keepLast, *keepDays, *dryRun)
+	if err != nil {
+		return err
+	}
+
+	if *dryRun {
+		fmt.Printf("would delete %d of %d checkpoints (kept %d)\\n", res.Deleted, res.Total, res.Kept)
+		return nil
+	}
+
+	fmt.Printf("deleted %d of %d checkpoints (kept %d)\\n", res.Deleted, res.Total, res.Kept)
 	return nil
 }
 
