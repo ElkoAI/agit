@@ -25,6 +25,8 @@ func main() {
 	s.AddTool(taskStartTool(), taskStartHandler)
 	s.AddTool(taskDoneTool(), taskDoneHandler)
 	s.AddTool(traceTool(), traceHandler)
+	s.AddTool(checkpointTool(), checkpointHandler)
+	s.AddTool(restoreTool(), restoreHandler)
 
 	if err := server.ServeStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)
@@ -103,6 +105,25 @@ func traceTool() mcp.Tool {
 		),
 		mcp.WithNumber("max_output",
 			mcp.Description("Max output bytes to return (0 = no limit)"),
+		),
+	)
+}
+
+func checkpointTool() mcp.Tool {
+	return mcp.NewTool("checkpoint",
+		mcp.WithDescription("Create a checkpoint (git commit + state)"),
+		mcp.WithString("message",
+			mcp.Required(),
+			mcp.Description("Commit message"),
+		),
+	)
+}
+
+func restoreTool() mcp.Tool {
+	return mcp.NewTool("restore",
+		mcp.WithDescription("Restore to latest checkpoint"),
+		mcp.WithBoolean("force",
+			mcp.Description("Restore even if working tree is dirty"),
 		),
 	)
 }
@@ -328,6 +349,44 @@ func traceHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	return jsonResult(resp)
+}
+
+func checkpointHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	msg, err := request.RequireString("message")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	appCtx, err := app.LoadContext()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer appCtx.Close()
+
+	commit, err := app.Checkpoint(appCtx, msg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return jsonResult(map[string]any{"commit": commit})
+}
+
+func restoreHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+	force, _ := args["force"].(bool)
+
+	appCtx, err := app.LoadContext()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer appCtx.Close()
+
+	commit, err := app.Restore(appCtx, force)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return jsonResult(map[string]any{"commit": commit})
 }
 
 func trimOutput(out string, max int) string {

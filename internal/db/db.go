@@ -91,6 +91,15 @@ type Trace struct {
 	RunAt      time.Time
 }
 
+type Checkpoint struct {
+	ID          int64
+	WorkspaceID string
+	CommitHash  string
+	AgentState  sql.NullString
+	Message     sql.NullString
+	CreatedAt   time.Time
+}
+
 func EnsureWorkspace(db *sql.DB, workspaceID, branch, worktreePath, lastCommit string) (Workspace, error) {
 	if workspaceID == "" || branch == "" {
 		return Workspace{}, fmt.Errorf("workspace_id and branch are required")
@@ -271,6 +280,72 @@ func RecordTrace(db *sql.DB, taskID int64, command string, exitCode int, output 
 	)
 	if err != nil {
 		return fmt.Errorf("record trace: %w", err)
+	}
+	return nil
+}
+
+func CreateCheckpoint(db *sql.DB, workspaceID, commitHash, agentState string) error {
+	if workspaceID == "" || commitHash == "" {
+		return fmt.Errorf("workspace_id and commit_hash are required")
+	}
+	_, err := db.Exec(
+		`INSERT INTO checkpoints (workspace_id, commit_hash, agent_state) VALUES (?, ?, ?)`,
+		workspaceID, commitHash, nullIfEmpty(agentState),
+	)
+	if err != nil {
+		return fmt.Errorf("create checkpoint: %w", err)
+	}
+	return nil
+}
+
+func GetLatestCheckpoint(db *sql.DB, workspaceID string) (Checkpoint, error) {
+	var cp Checkpoint
+	row := db.QueryRow(
+		`SELECT id, workspace_id, commit_hash, agent_state, message, created_at
+         FROM checkpoints WHERE workspace_id = ? ORDER BY id DESC LIMIT 1`,
+		workspaceID,
+	)
+	if err := row.Scan(&cp.ID, &cp.WorkspaceID, &cp.CommitHash, &cp.AgentState, &cp.Message, &cp.CreatedAt); err != nil {
+		return Checkpoint{}, err
+	}
+	return cp, nil
+}
+
+func ListCheckpoints(db *sql.DB, workspaceID string, limit int) ([]Checkpoint, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	rows, err := db.Query(
+		`SELECT id, workspace_id, commit_hash, agent_state, message, created_at
+         FROM checkpoints WHERE workspace_id = ? ORDER BY id DESC LIMIT ?`,
+		workspaceID, limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("list checkpoints: %w", err)
+	}
+	defer rows.Close()
+
+	var cps []Checkpoint
+	for rows.Next() {
+		var cp Checkpoint
+		if err := rows.Scan(&cp.ID, &cp.WorkspaceID, &cp.CommitHash, &cp.AgentState, &cp.Message, &cp.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan checkpoint: %w", err)
+		}
+		cps = append(cps, cp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list checkpoints: %w", err)
+	}
+	return cps, nil
+}
+
+func UpdateWorkspaceLastCommit(db *sql.DB, workspaceID, commit string) error {
+	_, err := db.Exec(
+		`UPDATE workspaces SET last_commit = ?, updated_at = CURRENT_TIMESTAMP WHERE workspace_id = ?`,
+		commit, workspaceID,
+	)
+	if err != nil {
+		return fmt.Errorf("update last commit: %w", err)
 	}
 	return nil
 }

@@ -36,6 +36,16 @@ func main() {
 			fmt.Fprintln(os.Stderr, "agit task failed:", err)
 			os.Exit(1)
 		}
+	case "checkpoint":
+		if err := runCheckpoint(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "agit checkpoint failed:", err)
+			os.Exit(1)
+		}
+	case "restore":
+		if err := runRestore(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "agit restore failed:", err)
+			os.Exit(1)
+		}
 	case "trace":
 		if err := runTrace(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "agit trace failed:", err)
@@ -65,6 +75,9 @@ func usage() {
 	fmt.Println("  agit task list        List tasks")
 	fmt.Println("  agit task start       Mark task as active")
 	fmt.Println("  agit task done        Run test and mark done")
+	fmt.Println("  agit checkpoint       Create a checkpoint (git commit + state)")
+	fmt.Println("  agit checkpoint list  List checkpoints")
+	fmt.Println("  agit restore          Restore to latest checkpoint")
 	fmt.Println("  agit trace            Show recent test traces")
 	fmt.Println("  agit hook install     Install git hooks")
 	fmt.Println("  agit hook uninstall   Remove AGIT git hooks")
@@ -383,6 +396,84 @@ func runTaskDone(args []string) error {
 		fmt.Println("completed task", id)
 	}
 	printLastTrace(ctx, id, *maxOutput, *printOnly)
+	return nil
+}
+
+func runCheckpoint(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("checkpoint subcommand required (list or message)")
+	}
+	if args[0] == "list" {
+		return runCheckpointList(args[1:])
+	}
+
+	msg := strings.Join(args, " ")
+	if strings.TrimSpace(msg) == "" {
+		return fmt.Errorf("checkpoint message is required")
+	}
+
+	ctx, err := app.LoadContext()
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
+
+	commit, err := app.Checkpoint(ctx, msg)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("checkpointed", commit)
+	return nil
+}
+
+func runCheckpointList(args []string) error {
+	fs := flag.NewFlagSet("agit checkpoint list", flag.ContinueOnError)
+	limit := fs.Int("limit", 10, "max checkpoints")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	ctx, err := app.LoadContext()
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
+
+	cps, err := app.ListCheckpoints(ctx, *limit)
+	if err != nil {
+		return err
+	}
+	if len(cps) == 0 {
+		fmt.Println("no checkpoints")
+		return nil
+	}
+
+	for _, cp := range cps {
+		fmt.Printf("%d  %s  %s\n", cp.ID, cp.CommitHash, cp.CreatedAt.Format("2006-01-02 15:04:05"))
+	}
+	return nil
+}
+
+func runRestore(args []string) error {
+	fs := flag.NewFlagSet("agit restore", flag.ContinueOnError)
+	force := fs.Bool("force", false, "restore even if working tree is dirty")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	ctx, err := app.LoadContext()
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
+
+	commit, err := app.Restore(ctx, *force)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("restored to", commit)
 	return nil
 }
 

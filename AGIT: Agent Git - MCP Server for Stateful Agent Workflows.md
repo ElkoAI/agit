@@ -258,7 +258,7 @@ Same MCP config pattern. For Zed's built-in agent, MCP support is coming.
 
 - Tool: `checkpoint` (git commit + state snapshot)
 
-- Tool: `restore` (git reset + state restore)
+- Tool: `restore` (git reset --hard + state restore, with --force)
 
 - Store agent_state JSON in checkpoints table
 
@@ -316,6 +316,13 @@ agit trace 1 --last --max-output 2000  # shows last failure
 # fix code
 
 agit task done 1  # retry
+
+Checkpoint + restore:
+
+bash
+
+agit checkpoint "before refactor"
+agit restore --force
 
 If a task has no test:
 
