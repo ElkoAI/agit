@@ -43,6 +43,7 @@ agit trace 1 --json
 
 ```
 docs/
+  getting-started.md  # quickstart guide
   mcp.md      # MCP tool reference
 cmd/
   agit/        # CLI
