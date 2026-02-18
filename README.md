@@ -41,6 +41,16 @@ agit trace 1 --last --max-output 2000
 agit trace 1 --json
 ```
 
+## MCP Quick Reference
+
+See `docs/mcp.md` for complete tool arguments and responses.
+
+Common tools:
+- `workspace_status`
+- `task_new`, `task_list`, `task_start`, `task_done`
+- `trace`, `checkpoint`, `checkpoint_list`, `restore`
+- `workspace_update`, `workspace_clear_state`
+
 ## Repository Layout
 
 ```
@@ -56,6 +66,7 @@ cmd/
 internal/
   app/         # app logic + git helpers
   db/          # DB schema + init
+```
 
 ## Pruning Checkpoints
 
@@ -74,7 +85,6 @@ Pruning is optional and configurable. By default, no pruning is done.
   }
 }
 ```
-```
 
 ## Roadmap (Short)
 
@@ -90,4 +100,4 @@ Pruning is optional and configurable. By default, no pruning is done.
 
 ## License
 
-TBD
+MIT
