@@ -23,8 +23,15 @@ func Checkpoint(ctx *Context, message string) (string, error) {
 		return "", err
 	}
 
-	state, _ := json.Marshal(map[string]any{})
-	if err := dbCreateCheckpoint(ctx, commit, string(state)); err != nil {
+	state := "{}"
+	if ctx.Workspace.AgentState.Valid && ctx.Workspace.AgentState.String != "" {
+		state = ctx.Workspace.AgentState.String
+	} else {
+		if b, err := json.Marshal(map[string]any{}); err == nil {
+			state = string(b)
+		}
+	}
+	if err := dbCreateCheckpoint(ctx, commit, state); err != nil {
 		return "", err
 	}
 

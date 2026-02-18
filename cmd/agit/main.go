@@ -51,6 +51,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, "agit trace failed:", err)
 			os.Exit(1)
 		}
+	case "workspace":
+		if err := runWorkspace(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "agit workspace failed:", err)
+			os.Exit(1)
+		}
 	case "hook":
 		if err := runHook(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, "agit hook failed:", err)
@@ -79,6 +84,7 @@ func usage() {
 	fmt.Println("  agit checkpoint list  List checkpoints")
 	fmt.Println("  agit restore          Restore to latest checkpoint")
 	fmt.Println("  agit trace            Show recent test traces")
+	fmt.Println("  agit workspace        Manage workspace state")
 	fmt.Println("  agit hook install     Install git hooks")
 	fmt.Println("  agit hook uninstall   Remove AGIT git hooks")
 	fmt.Println("  agit hook status      Show AGIT hook status")
@@ -538,6 +544,69 @@ func runTrace(args []string) error {
 			fmt.Println(trimOutput(t.Output.String, *maxOutput))
 		}
 	}
+	return nil
+}
+
+func runWorkspace(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("workspace subcommand required (set-state, clear-state)")
+	}
+	switch args[0] {
+	case "set-state":
+		return runWorkspaceSetState(args[1:])
+	case "clear-state":
+		return runWorkspaceClearState()
+	default:
+		return fmt.Errorf("unknown workspace subcommand: %s", args[0])
+	}
+}
+
+func runWorkspaceSetState(args []string) error {
+	fs := flag.NewFlagSet("agit workspace set-state", flag.ContinueOnError)
+	jsonStr := fs.String("json", "", "agent_state JSON string")
+	file := fs.String("file", "", "path to JSON file")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	state := strings.TrimSpace(*jsonStr)
+	if *file != "" {
+		data, err := os.ReadFile(*file)
+		if err != nil {
+			return err
+		}
+		state = strings.TrimSpace(string(data))
+	}
+	if state == "" {
+		return fmt.Errorf("agent_state JSON is required via --json or --file")
+	}
+
+	ctx, err := app.LoadContext()
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
+
+	if err := app.SetAgentState(ctx, state); err != nil {
+		return err
+	}
+
+	fmt.Println("updated agent_state")
+	return nil
+}
+
+func runWorkspaceClearState() error {
+	ctx, err := app.LoadContext()
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
+
+	if err := app.ClearAgentState(ctx); err != nil {
+		return err
+	}
+
+	fmt.Println("cleared agent_state")
 	return nil
 }
 

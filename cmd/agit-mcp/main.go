@@ -27,6 +27,8 @@ func main() {
 	s.AddTool(traceTool(), traceHandler)
 	s.AddTool(checkpointTool(), checkpointHandler)
 	s.AddTool(restoreTool(), restoreHandler)
+	s.AddTool(workspaceUpdateTool(), workspaceUpdateHandler)
+	s.AddTool(workspaceClearTool(), workspaceClearHandler)
 
 	if err := server.ServeStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)
@@ -38,6 +40,9 @@ func workspaceStatusTool() mcp.Tool {
 		mcp.WithDescription("Get current workspace state"),
 		mcp.WithBoolean("include_output",
 			mcp.Description("Include last trace output"),
+		),
+		mcp.WithBoolean("include_state",
+			mcp.Description("Include agent_state JSON"),
 		),
 		mcp.WithNumber("max_output",
 			mcp.Description("Max output bytes to return (0 = no limit)"),
@@ -128,6 +133,22 @@ func restoreTool() mcp.Tool {
 	)
 }
 
+func workspaceUpdateTool() mcp.Tool {
+	return mcp.NewTool("workspace_update",
+		mcp.WithDescription("Update workspace agent_state JSON"),
+		mcp.WithString("agent_state",
+			mcp.Required(),
+			mcp.Description("JSON string for agent_state"),
+		),
+	)
+}
+
+func workspaceClearTool() mcp.Tool {
+	return mcp.NewTool("workspace_clear_state",
+		mcp.WithDescription("Clear workspace agent_state"),
+	)
+}
+
 func workspaceStatusHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	appCtx, err := app.LoadContext()
 	if err != nil {
@@ -142,9 +163,13 @@ func workspaceStatusHandler(ctx context.Context, request mcp.CallToolRequest) (*
 
 	args := request.GetArguments()
 	includeOutput := false
+	includeState := false
 	maxOutput := 0
 	if v, ok := args["include_output"].(bool); ok {
 		includeOutput = v
+	}
+	if v, ok := args["include_state"].(bool); ok {
+		includeState = v
 	}
 	if v, ok := args["max_output"].(float64); ok {
 		if int(v) > 0 {
@@ -177,6 +202,9 @@ func workspaceStatusHandler(ctx context.Context, request mcp.CallToolRequest) (*
 			}
 			resp["last_trace"] = item
 		}
+	}
+	if includeState && appCtx.Workspace.AgentState.Valid {
+		resp["agent_state"] = appCtx.Workspace.AgentState.String
 	}
 
 	return jsonResult(resp)
@@ -387,6 +415,39 @@ func restoreHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.Call
 	}
 
 	return jsonResult(map[string]any{"commit": commit})
+}
+
+func workspaceUpdateHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	state, err := request.RequireString("agent_state")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	appCtx, err := app.LoadContext()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer appCtx.Close()
+
+	if err := app.SetAgentState(appCtx, state); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return mcp.NewToolResultText("agent_state updated"), nil
+}
+
+func workspaceClearHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	appCtx, err := app.LoadContext()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer appCtx.Close()
+
+	if err := app.ClearAgentState(appCtx); err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	return mcp.NewToolResultText("agent_state cleared"), nil
 }
 
 func trimOutput(out string, max int) string {

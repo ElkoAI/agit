@@ -98,7 +98,7 @@ tools := []mcp.Tool{
     {
         Name: "workspace_status",
         Description: "Get current workspace state",
-        Arguments: []string{"include_output", "max_output"},
+        Arguments: []string{"include_output", "include_state", "max_output"},
         Handler: func() (*Workspace, error) {
             return app.WorkspaceStatus(includeOutput, maxOutput)
         }
@@ -167,6 +167,21 @@ tools := []mcp.Tool{
         Arguments: []string{"task_id", "limit", "last", "max_output"},
         Handler: func(taskID, limit int) ([]Trace, error) {
             return db.GetTraces(taskID, limit)
+        }
+    },
+    {
+        Name: "workspace_update",
+        Description: "Update workspace agent_state JSON",
+        Arguments: []string{"agent_state"},
+        Handler: func(stateJSON string) error {
+            return db.UpdateWorkspaceAgentState(currentWorkspace(), stateJSON)
+        }
+    },
+    {
+        Name: "workspace_clear_state",
+        Description: "Clear workspace agent_state",
+        Handler: func() error {
+            return db.UpdateWorkspaceAgentState(currentWorkspace(), "")
         }
     },
 }
@@ -380,7 +395,15 @@ Meta: Use agit to build agit. The manifest above becomes the initial task list.
 
 ## Questions to Resolve
 
-1. **Agent state format** - JSON blob? What minimal fields?
+1. **Agent state format** - JSON blob. Minimal example:
+
+json
+
+{
+  "focus": "task name",
+  "notes": "short context",
+  "todo": ["next step 1", "next step 2"]
+}
 
 2. **Task test schema** - How to parse test commands from descriptions?
 

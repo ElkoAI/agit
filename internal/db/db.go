@@ -67,6 +67,7 @@ type Workspace struct {
 	Branch        string
 	WorktreePath  string
 	CurrentTaskID sql.NullInt64
+	AgentState    sql.NullString
 	LastCommit    sql.NullString
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
@@ -128,7 +129,7 @@ func EnsureWorkspace(db *sql.DB, workspaceID, branch, worktreePath, lastCommit s
 func GetWorkspace(db *sql.DB, workspaceID string) (Workspace, error) {
 	var ws Workspace
 	row := db.QueryRow(
-		`SELECT workspace_id, branch, worktree_path, current_task_id, last_commit, created_at, updated_at
+		`SELECT workspace_id, branch, worktree_path, current_task_id, agent_state, last_commit, created_at, updated_at
          FROM workspaces WHERE workspace_id = ?`,
 		workspaceID,
 	)
@@ -137,6 +138,7 @@ func GetWorkspace(db *sql.DB, workspaceID string) (Workspace, error) {
 		&ws.Branch,
 		&ws.WorktreePath,
 		&ws.CurrentTaskID,
+		&ws.AgentState,
 		&ws.LastCommit,
 		&ws.CreatedAt,
 		&ws.UpdatedAt,
@@ -346,6 +348,17 @@ func UpdateWorkspaceLastCommit(db *sql.DB, workspaceID, commit string) error {
 	)
 	if err != nil {
 		return fmt.Errorf("update last commit: %w", err)
+	}
+	return nil
+}
+
+func UpdateWorkspaceAgentState(db *sql.DB, workspaceID, stateJSON string) error {
+	_, err := db.Exec(
+		`UPDATE workspaces SET agent_state = ?, updated_at = CURRENT_TIMESTAMP WHERE workspace_id = ?`,
+		nullIfEmpty(stateJSON), workspaceID,
+	)
+	if err != nil {
+		return fmt.Errorf("update agent_state: %w", err)
 	}
 	return nil
 }
