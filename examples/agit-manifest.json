@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "name": "example",
+  "description": "Example AGIT manifest",
+  "checkpoints": {
+    "keep_last": 20,
+    "keep_days": 30
+  },
+  "tasks": [
+    {
+      "id": 1,
+      "description": "Add workspace_status tool",
+      "test": "go test ./internal/mcp -run TestWorkspaceStatus",
+      "dependencies": []
+    }
+  ],
+  "agents": {
+    "preferred": "claude-code",
+    "integrations": ["opencode", "cursor"]
+  }
+}

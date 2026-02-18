@@ -47,6 +47,9 @@ agit trace 1 --json
 docs/
   getting-started.md  # quickstart guide
   mcp.md      # MCP tool reference
+examples/
+  agit-manifest.json  # sample manifest
+  mcp/                # sample MCP configs
 cmd/
   agit/        # CLI
   agit-mcp/    # MCP server (stub)

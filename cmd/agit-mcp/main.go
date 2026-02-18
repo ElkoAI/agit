@@ -26,6 +26,7 @@ func main() {
 	s.AddTool(taskDoneTool(), taskDoneHandler)
 	s.AddTool(traceTool(), traceHandler)
 	s.AddTool(checkpointTool(), checkpointHandler)
+	s.AddTool(checkpointListTool(), checkpointListHandler)
 	s.AddTool(restoreTool(), restoreHandler)
 	s.AddTool(workspaceUpdateTool(), workspaceUpdateHandler)
 	s.AddTool(workspaceClearTool(), workspaceClearHandler)
@@ -120,6 +121,15 @@ func checkpointTool() mcp.Tool {
 		mcp.WithString("message",
 			mcp.Required(),
 			mcp.Description("Commit message"),
+		),
+	)
+}
+
+func checkpointListTool() mcp.Tool {
+	return mcp.NewTool("checkpoint_list",
+		mcp.WithDescription("List checkpoints"),
+		mcp.WithNumber("limit",
+			mcp.Description("Max checkpoints to return"),
 		),
 	)
 }
@@ -406,6 +416,42 @@ func checkpointHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		"commit":  commit,
 		"message": msg,
 	})
+}
+
+func checkpointListHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := request.GetArguments()
+	limit := 20
+	if v, ok := args["limit"].(float64); ok {
+		if int(v) > 0 {
+			limit = int(v)
+		}
+	}
+
+	appCtx, err := app.LoadContext()
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	defer appCtx.Close()
+
+	cps, err := app.ListCheckpoints(appCtx, limit)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	resp := make([]map[string]any, 0, len(cps))
+	for _, cp := range cps {
+		item := map[string]any{
+			"id":         cp.ID,
+			"commit":     cp.CommitHash,
+			"created_at": cp.CreatedAt,
+		}
+		if cp.Message.Valid {
+			item["message"] = cp.Message.String
+		}
+		resp = append(resp, item)
+	}
+
+	return jsonResult(resp)
 }
 
 func restoreHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

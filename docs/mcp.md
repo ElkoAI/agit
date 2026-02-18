@@ -114,6 +114,19 @@ Response:
 {"commit": "<hash>", "message": "before refactor"}
 ```
 
+## checkpoint_list
+List checkpoints.
+
+Arguments:
+- `limit` (number, optional)
+
+Response:
+```json
+[
+  {"id": 1, "commit": "<hash>", "created_at": "2026-02-18T12:34:56-05:00", "message": "before refactor"}
+]
+```
+
 ## restore
 Restore to latest checkpoint.
 
