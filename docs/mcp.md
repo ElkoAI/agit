@@ -111,7 +111,7 @@ Arguments:
 
 Response:
 ```json
-{"commit": "<hash>"}
+{"commit": "<hash>", "message": "before refactor"}
 ```
 
 ## restore

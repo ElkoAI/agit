@@ -23,7 +23,7 @@ func TestCheckpointCRUD(t *testing.T) {
 	ctx := newTestContext(t)
 	defer ctx.Close()
 
-	if err := db.CreateCheckpoint(ctx.DB, ctx.WorkspaceID, "abc123", "{}"); err != nil {
+	if err := db.CreateCheckpoint(ctx.DB, ctx.WorkspaceID, "abc123", "{}", "first"); err != nil {
 		t.Fatalf("CreateCheckpoint: %v", err)
 	}
 
@@ -33,6 +33,9 @@ func TestCheckpointCRUD(t *testing.T) {
 	}
 	if cp.CommitHash != "abc123" {
 		t.Fatalf("unexpected commit hash: %s", cp.CommitHash)
+	}
+	if !cp.Message.Valid || cp.Message.String != "first" {
+		t.Fatalf("expected message 'first', got %+v", cp.Message)
 	}
 
 	list, err := db.ListCheckpoints(ctx.DB, ctx.WorkspaceID, 10)

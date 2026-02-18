@@ -402,7 +402,10 @@ func checkpointHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	return jsonResult(map[string]any{"commit": commit})
+	return jsonResult(map[string]any{
+		"commit":  commit,
+		"message": msg,
+	})
 }
 
 func restoreHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

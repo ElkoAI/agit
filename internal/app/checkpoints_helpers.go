@@ -10,8 +10,8 @@ import (
 
 type CheckpointRecord = db.Checkpoint
 
-func dbCreateCheckpoint(ctx *Context, commitHash, agentState string) error {
-	return db.CreateCheckpoint(ctx.DB, ctx.WorkspaceID, commitHash, agentState)
+func dbCreateCheckpoint(ctx *Context, commitHash, agentState, message string) error {
+	return db.CreateCheckpoint(ctx.DB, ctx.WorkspaceID, commitHash, agentState, message)
 }
 
 func dbLatestCheckpoint(ctx *Context) (db.Checkpoint, error) {

@@ -286,13 +286,13 @@ func RecordTrace(db *sql.DB, taskID int64, command string, exitCode int, output 
 	return nil
 }
 
-func CreateCheckpoint(db *sql.DB, workspaceID, commitHash, agentState string) error {
+func CreateCheckpoint(db *sql.DB, workspaceID, commitHash, agentState, message string) error {
 	if workspaceID == "" || commitHash == "" {
 		return fmt.Errorf("workspace_id and commit_hash are required")
 	}
 	_, err := db.Exec(
-		`INSERT INTO checkpoints (workspace_id, commit_hash, agent_state) VALUES (?, ?, ?)`,
-		workspaceID, commitHash, nullIfEmpty(agentState),
+		`INSERT INTO checkpoints (workspace_id, commit_hash, agent_state, message) VALUES (?, ?, ?, ?)`,
+		workspaceID, commitHash, nullIfEmpty(agentState), nullIfEmpty(message),
 	)
 	if err != nil {
 		return fmt.Errorf("create checkpoint: %w", err)

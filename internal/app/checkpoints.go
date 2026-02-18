@@ -31,7 +31,7 @@ func Checkpoint(ctx *Context, message string) (string, error) {
 			state = string(b)
 		}
 	}
-	if err := dbCreateCheckpoint(ctx, commit, state); err != nil {
+	if err := dbCreateCheckpoint(ctx, commit, state, message); err != nil {
 		return "", err
 	}
 

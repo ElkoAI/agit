@@ -456,7 +456,11 @@ func runCheckpointList(args []string) error {
 	}
 
 	for _, cp := range cps {
-		fmt.Printf("%d  %s  %s\n", cp.ID, cp.CommitHash, cp.CreatedAt.Format("2006-01-02 15:04:05"))
+		msg := ""
+		if cp.Message.Valid {
+			msg = cp.Message.String
+		}
+		fmt.Printf("%d  %s  %s  %s\n", cp.ID, cp.CommitHash, cp.CreatedAt.Format("2006-01-02 15:04:05"), msg)
 	}
 	return nil
 }
